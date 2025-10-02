@@ -4,18 +4,17 @@ This calibration script automatically tests your control system to solve for the
 
 ## How to Use
 
-1. **Replace your main.cpp**: Copy the contents of `calibration.cpp` to `src/main.cpp`
-2. **Upload to Arduino**: Compile and upload the code to your Arduino
-3. **Monitor Serial Output**: Open the Serial Monitor at 115200 baud
-4. **Wait for Completion**: The script will run automatically and output results
+1. **Upload to Arduino**: Compile and upload the code to your Arduino
+2. **Monitor Serial Output**: Open the Serial Monitor at 115200 baud
+3. **Wait for Completion**: The script will run automatically and output results
 
 ## What the Script Does
 
 ### Test Sequence
-- Tests **9 different Kp values** from 20 to 100
-- For each Kp, tests **5 different setpoints** from 0 to π/4 radians
-- Each test runs for **10 seconds** with **3 seconds settling** between tests
-- Total test time: approximately **12 minutes**
+- Tests **8 different Kp values** from 18 to 24
+- For each Kp, tests **10 different setpoints** from π/8 to π/4 radians
+- Each test runs for **0.75 seconds** with **0.25 seconds settling** between tests
+- Total test time: approximately **80 seconds**
 
 ### Data Collection
 For each test, the script measures:
@@ -70,12 +69,3 @@ The parameters are calculated using:
 - **No valid data**: Ensure setpoints are non-zero for overshoot analysis
 - **Inconsistent results**: Check that the system is properly connected and calibrated
 - **Oscillation issues**: The script includes settling time between tests to allow the system to stabilize
-
-## Next Steps
-
-After getting τ and K1 values, you can:
-1. Use these parameters to design better controllers
-2. Implement PID control with calculated parameters
-3. Analyze system stability and performance
-4. Optimize control gains for your specific application
-
