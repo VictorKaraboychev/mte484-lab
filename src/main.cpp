@@ -71,7 +71,7 @@ void setup() {
 
   geeWhizBegin();
   set_control_interval_ms(2);
-  setMotorVoltage(0.0f + MOTOR_VOLTAGE_OFFSET);
+  setMotorVoltage(0.0f);
 
   Serial.println("=== System Calibration Started ===");
   Serial.println("Testing Kp values from -20 to -100");
@@ -91,6 +91,7 @@ void loop() {
     if (millis() - test_start_time > 2000) { // Wait 2 seconds after completion
       calculateSystemParameters();
       printResults();
+      setMotorVoltage(0.0f);
       while(true) { delay(1000); } // Stop execution
     }
     return;
