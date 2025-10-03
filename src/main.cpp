@@ -18,8 +18,8 @@ const int NUM_KP_TESTS = 8;  // Number of Kp values to test
 const int NUM_SETPOINT_TESTS = 10;  // Number of setpoints to test per Kp
 const float KP_MIN = -18.0f;
 const float KP_MAX = -24.0f;
-const float SETPOINT_MIN = PI/4.0f;
-const float SETPOINT_MAX = PI/8.0f;
+const float SETPOINT_MIN = PI/8.0f;
+const float SETPOINT_MAX = PI/4.0f;
 
 // ================== Test Data Structure ==================
 struct TestData {
