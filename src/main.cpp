@@ -10,6 +10,9 @@ int BAL_PIN = A1;   // ball position sensor
 #define MOTOR_ENCODER_OFFSET 7.05480455543
 #define MOTOR_VOLTAGE_OFFSET 0.2f
 
+#define MAX_ANGLE PI/4.0f
+#define MIN_ANGLE -PI/4.0f
+
 // ================== Calibration Parameters ==================
 const int NUM_KP_TESTS = 8;  // Number of Kp values to test
 const int NUM_SETPOINT_TESTS = 10;  // Number of setpoints to test per Kp
@@ -146,7 +149,7 @@ float frictionOffset(float voltage) {
 }
 
 void control(float target, float kp) {
-  float error = target - getMotorAngle();
+  float error = min(max(target, MIN_ANGLE), MAX_ANGLE) - getMotorAngle();
   float voltage = kp * error;
   setMotorVoltage(frictionOffset(voltage));
 }
@@ -328,7 +331,7 @@ void interval_control_code(void) {
   
   digitalWrite(A5, HIGH);
   
-  // Analyze response in real-time (no printing during tests)
+  // Analyze response in real-time
   if (test_in_progress && current_setpoint > 0.01f) { // Only for non-zero setpoints
     float elapsed_time = (millis() - test_start_time) / 1000.0f;
     
