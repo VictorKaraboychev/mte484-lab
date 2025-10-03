@@ -83,7 +83,7 @@ void setup() {
   Serial.println("=== Starting Tests ===");
   
   // Start calibration immediately
-  delay(1000); // Brief delay to ensure system is ready
+  delay(1000);
   startNewTest();
 
 }
@@ -91,11 +91,11 @@ void setup() {
 // ================== Main Loop ==================
 void loop() {
   if (calibration_complete) {
-    if (millis() - test_start_time > 2000) { // Wait 2 seconds after completion
+    if (millis() - test_start_time > 2000) {
       calculateSystemParameters();
       printResults();
       setMotorVoltage(0.0f);
-      while(true) { delay(1000); } // Stop execution
+      while(true) { delay(1000); }
     }
     return;
   }
@@ -134,7 +134,7 @@ void loop() {
     control(current_setpoint, current_kp);
   } else {
     // Reset position to 0 during settling
-    control(0, -30); // Use negative gain to drive to zero
+    control(0, -30);
   }
 }
 
@@ -338,10 +338,8 @@ void interval_control_code(void) {
     // Track maximum overshoot
     if (angle > current_setpoint && angle > max_overshoot) {
       max_overshoot = angle;
-      if (!peak_found) {
-        peak_time_value = elapsed_time;
-        peak_found = true;
-      }
+      peak_time_value = elapsed_time;
+      peak_found = true;
     }
     
     // Track steady state (last 200ms of test)
