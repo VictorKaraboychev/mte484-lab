@@ -30,7 +30,7 @@ static float voltage_history[CONTROL_POLES + 1] = {0.0f};
 // ================== Function Declarations ==================
 float getMotorAngle();
 float offset(float value, float offset);
-void control(float target);
+float control(float target);
 float square(float period, float max = 1, float min = 0);
 
 // ================== Setup ==================
@@ -48,7 +48,9 @@ void setup() {
 void loop() {
   float target = square(2.0f, 0.7f, -0.7f);
 
-  control(target);
+  float voltage = control(target);
+
+  setMotorVoltage(voltage);
 
   delay(SAMPLING_TIME_MS);
 }
@@ -63,7 +65,7 @@ float offset(float value, float offset) {
   return (value / fabs(value)) * fmax(fabs(value), offset);
 }
 
-void control(float target) {
+float control(float target) {
   float y = getMotorAngle();  // Output (motor angle)
   float r = constrain(target, MIN_ANGLE, MAX_ANGLE);  // Input (reference/target)
   float e = r - y;  // Error
@@ -116,7 +118,8 @@ void control(float target) {
   Serial.println(e, 4);
 
   float voltage = offset(u, MOTOR_VOLTAGE_OFFSET);
-  setMotorVoltage(voltage);
+  
+  return voltage;
 }
 
 // ================== Square Wave Generator ==================
