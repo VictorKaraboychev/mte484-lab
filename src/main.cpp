@@ -29,7 +29,7 @@ static float voltage_history[CONTROL_POLES + 1] = {0.0f};
 
 // ================== Function Declarations ==================
 float getMotorAngle();
-float frictionOffset(float voltage);
+float offset(float value, float offset);
 void control(float target);
 float square(float period, float max = 1, float min = 0);
 
@@ -42,13 +42,6 @@ void setup() {
   geeWhizBegin();
   set_control_interval_ms(SAMPLING_TIME_MS);
   setMotorVoltage(0.0f);
-  
-  // Initialize transfer function history arrays
-  for (int i = 0; i < CONTROL_POLES; i++) {
-    error_history[i] = 0.0f;
-    voltage_history[i] = 0.0f;
-  }
-  voltage_history[CONTROL_POLES] = 0.0f;
 }
 
 // ================== Main Loop ==================
@@ -116,7 +109,8 @@ void control(float target) {
   // Update voltage history with the constrained value
   voltage_history[0] = voltage;
 
-  setMotorVoltage(offset(voltage, MOTOR_VOLTAGE_OFFSET));
+  voltage = offset(voltage, MOTOR_VOLTAGE_OFFSET);
+  setMotorVoltage(voltage);
 }
 
 // ================== Square Wave Generator ==================
