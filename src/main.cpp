@@ -11,7 +11,7 @@ int BAL_PIN = A1;   // ball position sensor
 #define MOTOR_ENCODER_OFFSET 7.05480455543
 #define MOTOR_VOLTAGE_OFFSET 0.2f
 
-#define SAMPLING_TIME_MS 2
+#define SAMPLING_TIME_MS 15
 
 #define MAX_ANGLE PI / 4.0f
 #define MIN_ANGLE -PI / 4.0f
@@ -19,9 +19,9 @@ int BAL_PIN = A1;   // ball position sensor
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define CONTROL_POLES 14
-const float CONTROL_NUMERATOR[CONTROL_POLES] = {};
-const float CONTROL_DENOMINATOR[CONTROL_POLES + 1] = {};
+#define CONTROL_POLES 6
+const float CONTROL_NUMERATOR[CONTROL_POLES] = {-2.543,7.60794,-9.30758,5.55055,-1.43994,0.0864003};
+const float CONTROL_DENOMINATOR[CONTROL_POLES + 1] = {1,-3.0378,3.88581,-2.67493,1.04833,-0.225399,0.0190779};
 
 // Transfer function history arrays
 static float error_history[CONTROL_POLES] = {0.0f};
@@ -46,11 +46,11 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float target = square(0.5f, 0.7f, -0.7f);
+  float target = square(1.0f, 0.7f, -0.7f);
 
   control(target);
 
-  delay(2);
+  delay(SAMPLING_TIME_MS);
 }
 
 // ================== Control Functions ==================
@@ -66,6 +66,12 @@ float offset(float value, float offset) {
 void control(float target) {
   float error = constrain(target, MIN_ANGLE, MAX_ANGLE) - getMotorAngle();
 
+  // Update error history first (shift right, then insert new error at index 0)
+  for (int i = CONTROL_POLES - 1; i > 0; i--) {
+    error_history[i] = error_history[i - 1];
+  }
+  error_history[0] = error;
+
   // Compute voltage using transfer function difference equation
   // y[k] = (b[0]*u[k] + b[1]*u[k-1] + ... - a[1]*y[k-1] - a[2]*y[k-2] - ...) / a[0]
   
@@ -73,11 +79,7 @@ void control(float target) {
   
   // Numerator (feedforward) terms: b[0]*u[k] + b[1]*u[k-1] + ... + b[n-1]*u[k-n+1]
   for (int i = 0; i < CONTROL_POLES; i++) {
-    if (i == 0) {
-      voltage += CONTROL_NUMERATOR[i] * error;
-    } else {
-      voltage += CONTROL_NUMERATOR[i] * error_history[i - 1];
-    }
+    voltage += CONTROL_NUMERATOR[i] * error_history[i];
   }
   
   // Denominator (feedback) terms: -a[1]*y[k-1] - a[2]*y[k-2] - ... - a[n]*y[k-n]
@@ -90,23 +92,13 @@ void control(float target) {
   if (CONTROL_DENOMINATOR[0] != 0.0f) {
     voltage /= CONTROL_DENOMINATOR[0];
   }
-  
-  // Update history arrays (shift right, insert new values at index 0)
-  // Shift error history: u[k-n+2] -> u[k-n+1], ..., u[k-1] -> u[k-2], u[k] -> u[k-1]
-  for (int i = CONTROL_POLES - 1; i > 0; i--) {
-    error_history[i] = error_history[i - 1];
-  }
-  error_history[0] = error;
-  
-  // Shift voltage history: y[k-n] -> y[k-n-1], ..., y[k-1] -> y[k-2]
-  for (int i = CONTROL_POLES; i > 0; i--) {
-    voltage_history[i] = voltage_history[i - 1];
-  }
-  // voltage_history[0] will be updated after saturation and before applying to motor
 
   voltage = constrain(voltage, MIN_VOLTAGE, MAX_VOLTAGE);
   
-  // Update voltage history with the constrained value
+  // Update voltage history (shift right, then insert new voltage at index 0)
+  for (int i = CONTROL_POLES; i > 0; i--) {
+    voltage_history[i] = voltage_history[i - 1];
+  }
   voltage_history[0] = voltage;
 
   voltage = offset(voltage, MOTOR_VOLTAGE_OFFSET);
