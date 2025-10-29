@@ -46,7 +46,7 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float target = square(1.0f, 0.7f, -0.7f);
+  float target = square(2.0f, 0.7f, -0.7f);
 
   control(target);
 
@@ -64,44 +64,58 @@ float offset(float value, float offset) {
 }
 
 void control(float target) {
-  float error = constrain(target, MIN_ANGLE, MAX_ANGLE) - getMotorAngle();
+  float y = getMotorAngle();  // Output (motor angle)
+  float r = constrain(target, MIN_ANGLE, MAX_ANGLE);  // Input (reference/target)
+  float e = r - y;  // Error
 
   // Update error history first (shift right, then insert new error at index 0)
   for (int i = CONTROL_POLES - 1; i > 0; i--) {
     error_history[i] = error_history[i - 1];
   }
-  error_history[0] = error;
+  error_history[0] = e;
 
   // Compute voltage using transfer function difference equation
   // y[k] = (b[0]*u[k] + b[1]*u[k-1] + ... - a[1]*y[k-1] - a[2]*y[k-2] - ...) / a[0]
   
-  float voltage = 0.0f;
+  float u = 0.0f;  // Control voltage (before offset)
   
   // Numerator (feedforward) terms: b[0]*u[k] + b[1]*u[k-1] + ... + b[n-1]*u[k-n+1]
   for (int i = 0; i < CONTROL_POLES; i++) {
-    voltage += CONTROL_NUMERATOR[i] * error_history[i];
+    u += CONTROL_NUMERATOR[i] * error_history[i];
   }
   
   // Denominator (feedback) terms: -a[1]*y[k-1] - a[2]*y[k-2] - ... - a[n]*y[k-n]
   // Skip a[0] as it's the leading coefficient (used for normalization)
   for (int i = 1; i <= CONTROL_POLES; i++) {
-    voltage -= CONTROL_DENOMINATOR[i] * voltage_history[i - 1];
+    u -= CONTROL_DENOMINATOR[i] * voltage_history[i - 1];
   }
   
   // Normalize by leading denominator coefficient (typically 1.0)
   if (CONTROL_DENOMINATOR[0] != 0.0f) {
-    voltage /= CONTROL_DENOMINATOR[0];
+    u /= CONTROL_DENOMINATOR[0];
   }
 
-  voltage = constrain(voltage, MIN_VOLTAGE, MAX_VOLTAGE);
+  u = constrain(u, MIN_VOLTAGE, MAX_VOLTAGE);
   
   // Update voltage history (shift right, then insert new voltage at index 0)
   for (int i = CONTROL_POLES; i > 0; i--) {
     voltage_history[i] = voltage_history[i - 1];
   }
-  voltage_history[0] = voltage;
+  voltage_history[0] = u;
 
-  voltage = offset(voltage, MOTOR_VOLTAGE_OFFSET);
+  // Output CSV: (time[seconds], y, u, r, e)
+  float time = millis() / 1000.0f;
+  Serial.print(time, 4);
+  Serial.print(",");
+  Serial.print(y, 4);
+  Serial.print(",");
+  Serial.print(u, 4);
+  Serial.print(",");
+  Serial.print(r, 4);
+  Serial.print(",");
+  Serial.println(e, 4);
+
+  float voltage = offset(u, MOTOR_VOLTAGE_OFFSET);
   setMotorVoltage(voltage);
 }
 
