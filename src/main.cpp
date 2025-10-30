@@ -9,18 +9,23 @@ int BAL_PIN = A1;   // ball position sensor
 // ================== Configuration ==================
 #define MOTOR_ENCODER_M -0.01377891515
 #define MOTOR_ENCODER_OFFSET 7.05480455543
-#define MOTOR_VOLTAGE_OFFSET 0.2f
+
+#define BALL_POSITION_M 0.001066391
+#define BALL_POSITION_OFFSET -0.331083538
+
+#define MOTOR_VOLTAGE_OFFSET_UP 0.3f
+#define MOTOR_VOLTAGE_OFFSET_DOWN -0.38f
 
 #define SAMPLING_TIME_MS 15
 
-#define MAX_ANGLE PI / 4.0f
-#define MIN_ANGLE -PI / 4.0f
+#define MAX_ANGLE 0.7f
+#define MIN_ANGLE -0.7f
 
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
 #define CONTROL_POLES 6
-const float CONTROL_NUMERATOR[CONTROL_POLES] = {-2.543,7.607134211501692,-9.306292203923523,5.549959653328761,-1.4398647156921363,0.0863967655378138};
+const float CONTROL_NUMERATOR[CONTROL_POLES] = {-2.553,7.607134211501692,-9.306292203923523,5.549959653328761,-1.4398647156921363,0.0863967655378138};
 const float CONTROL_DENOMINATOR[CONTROL_POLES + 1] = {1,-3.0378212871871377,3.885912478932794,-2.6750909423578797,1.0484404482158423,-0.22543761513395377,0.019081635608925465};
 
 // Transfer function history arrays
@@ -29,6 +34,7 @@ static float voltage_history[CONTROL_POLES + 1] = {0.0f};
 
 // ================== Function Declarations ==================
 float getMotorAngle();
+float getBallPosition();
 float offset(float value, float offset);
 float control(float target);
 float square(float period, float max = 1, float min = 0);
@@ -45,8 +51,11 @@ void setup() {
 }
 
 // ================== Main Loop ==================
+float avg = 0;
+
+
 void loop() {
-  float target = square(2.0f, 0.7f, -0.7f);
+  float target = PI / 4.0f; //square(3.0f, 0.7f, -0.7f);
 
   float voltage = control(target);
 
@@ -61,8 +70,17 @@ float getMotorAngle() {
   return MOTOR_ENCODER_M * motor + MOTOR_ENCODER_OFFSET;
 }
 
-float offset(float value, float offset) {
-  return (value / fabs(value)) * fmax(fabs(value), offset);
+float getBallPosition() {
+  int ball = analogRead(BAL_PIN);
+  return BALL_POSITION_M * ball + BALL_POSITION_OFFSET;
+}
+
+float offset(float value, float offset_up, float offset_down) {
+  if (value > 0) {
+    return fmax(value, offset_up);
+  } else {
+    return fmin(value, offset_down);
+  }
 }
 
 float control(float target) {
@@ -88,8 +106,8 @@ float control(float target) {
   
   // Denominator (feedback) terms: -a[1]*y[k-1] - a[2]*y[k-2] - ... - a[n]*y[k-n]
   // Skip a[0] as it's the leading coefficient (used for normalization)
-  for (int i = 1; i <= CONTROL_POLES; i++) {
-    u -= CONTROL_DENOMINATOR[i] * voltage_history[i - 1];
+  for (int i = 0; i < CONTROL_POLES; i++) {
+    u -= CONTROL_DENOMINATOR[i + 1] * voltage_history[i];
   }
   
   // Normalize by leading denominator coefficient (typically 1.0)
@@ -107,17 +125,23 @@ float control(float target) {
 
   // Output CSV: (time[seconds], y, u, r, e)
   float time = millis() / 1000.0f;
+  // Serial.print(time, 4);
+  // Serial.print(",");
+  // Serial.print(y, 4);
+  // Serial.print(",");
+  // Serial.print(u, 4);
+  // Serial.print(",");
+  // Serial.print(r, 4);
+  // Serial.print(",");
+  // Serial.println(e, 4);
+
   Serial.print(time, 4);
   Serial.print(",");
-  Serial.print(y, 4);
+  Serial.print(getBallPosition(), 4);
   Serial.print(",");
-  Serial.print(u, 4);
-  Serial.print(",");
-  Serial.print(r, 4);
-  Serial.print(",");
-  Serial.println(e, 4);
+  Serial.println(getMotorAngle(), 4);
 
-  float voltage = offset(u, MOTOR_VOLTAGE_OFFSET);
+  float voltage = offset(u, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
   
   return voltage;
 }
