@@ -6,6 +6,10 @@
 int MOT_PIN = A0;   // motor angle sensor
 int BAL_PIN = A1;   // ball position sensor
 
+// ================== Data Variables ==================
+volatile int motor_angle_raw;
+volatile int ball_position_raw; 
+
 // ================== Configuration ==================
 #define MOTOR_ENCODER_M -0.01377891515
 #define MOTOR_ENCODER_OFFSET 7.05480455543
@@ -51,9 +55,6 @@ void setup() {
 }
 
 // ================== Main Loop ==================
-float avg = 0;
-
-
 void loop() {
   float target = PI / 4.0f; //square(3.0f, 0.7f, -0.7f);
 
@@ -66,13 +67,11 @@ void loop() {
 
 // ================== Control Functions ==================
 float getMotorAngle() {
-  int motor = analogRead(MOT_PIN);
-  return MOTOR_ENCODER_M * motor + MOTOR_ENCODER_OFFSET;
+  return MOTOR_ENCODER_M * motor_angle_raw + MOTOR_ENCODER_OFFSET;
 }
 
 float getBallPosition() {
-  int ball = analogRead(BAL_PIN);
-  return BALL_POSITION_M * ball + BALL_POSITION_OFFSET;
+  return BALL_POSITION_M * ball_position_raw + BALL_POSITION_OFFSET;
 }
 
 float offset(float value, float offset_up, float offset_down) {
@@ -162,11 +161,9 @@ float square(float period, float max, float min) {
 // ================== Control ISR ==================
 void interval_control_code(void) {
   float seconds = millis() / 1000.0f;
-  int motor = analogRead(MOT_PIN);
-  int ball = analogRead(BAL_PIN);
-  float angle = getMotorAngle();
+  motor_angle_raw = analogRead(MOT_PIN);
+  ball_position_raw = analogRead(BAL_PIN);
   
   digitalWrite(A5, HIGH);
-  
   digitalWrite(A5, LOW);
 }
