@@ -56,7 +56,7 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float target = PI / 4.0f; //square(3.0f, 0.7f, -0.7f);
+  float target = square(3.0f, 0.7f, -0.7f); // -0.7 to 0.7 radians with 3 second period
 
   float voltage = control(target);
 
