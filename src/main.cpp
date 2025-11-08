@@ -39,7 +39,7 @@ static float voltage_history[CONTROL_POLES + 1] = {0.0f};
 // ================== Function Declarations ==================
 float getMotorAngle();
 float getBallPosition();
-float offset(float value, float offset);
+float offset(float value, float offset_up, float offset_down);
 float control(float target);
 float square(float period, float max = 1, float min = 0);
 
@@ -122,28 +122,7 @@ float control(float target) {
   }
   voltage_history[0] = u;
 
-  // Output CSV: (time[seconds], y, u, r, e)
-  float time = millis() / 1000.0f;
-  
-  // Serial.print(time, 4);
-  // Serial.print(",");
-  // Serial.print(y, 4);
-  // Serial.print(",");
-  // Serial.print(u, 4);
-  // Serial.print(",");
-  // Serial.print(r, 4);
-  // Serial.print(",");
-  // Serial.println(e, 4);
-
-  // Serial.print(time, 4);
-  // Serial.print(",");
-  // Serial.print(getBallPosition(), 4);
-  // Serial.print(",");
-  // Serial.println(getMotorAngle(), 4);
-
-  float voltage = offset(u, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
-  
-  return voltage;
+  return offset(u, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
 }
 
 // ================== Square Wave Generator ==================
