@@ -124,6 +124,7 @@ float control(float target) {
 
   // Output CSV: (time[seconds], y, u, r, e)
   float time = millis() / 1000.0f;
+  
   // Serial.print(time, 4);
   // Serial.print(",");
   // Serial.print(y, 4);
@@ -134,11 +135,11 @@ float control(float target) {
   // Serial.print(",");
   // Serial.println(e, 4);
 
-  Serial.print(time, 4);
-  Serial.print(",");
-  Serial.print(getBallPosition(), 4);
-  Serial.print(",");
-  Serial.println(getMotorAngle(), 4);
+  // Serial.print(time, 4);
+  // Serial.print(",");
+  // Serial.print(getBallPosition(), 4);
+  // Serial.print(",");
+  // Serial.println(getMotorAngle(), 4);
 
   float voltage = offset(u, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
   
