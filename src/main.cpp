@@ -160,7 +160,6 @@ float square(float period, float max, float min) {
 
 // ================== Control ISR ==================
 void interval_control_code(void) {
-  float seconds = millis() / 1000.0f;
   motor_angle_raw = analogRead(MOT_PIN);
   ball_position_raw = analogRead(BAL_PIN);
   
