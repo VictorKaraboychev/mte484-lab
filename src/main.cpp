@@ -2,6 +2,8 @@
 #include <geeWhiz.h>
 #include <math.h>
 
+#include <transfer_function.h>
+
 // ================== Pins ==================
 int MOT_PIN = A0;   // motor angle sensor
 int BAL_PIN = A1;   // ball position sensor
@@ -17,8 +19,8 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define MOTOR_VOLTAGE_OFFSET_UP 0.1f
-#define MOTOR_VOLTAGE_OFFSET_DOWN -0.4f
+#define MOTOR_VOLTAGE_OFFSET_UP 0.2f
+#define MOTOR_VOLTAGE_OFFSET_DOWN -0.55f
 
 #define SAMPLING_TIME_MS 15
 
@@ -28,19 +30,22 @@ volatile int ball_position_raw;
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define CONTROL_POLES 6
-const float CONTROL_NUMERATOR[CONTROL_POLES] = {-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
-const float CONTROL_DENOMINATOR[CONTROL_POLES + 1] = {1.000000000000000,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
+#define D1_POLES 1
+const float D1_NUMERATOR[D1_POLES] = {-5.0f};
+const float D1_DENOMINATOR[D1_POLES + 1] = {1.0f, 0.0f};
 
-// Transfer function history arrays
-static float error_history[CONTROL_POLES] = {0.0f};
-static float voltage_history[CONTROL_POLES + 1] = {0.0f};
+TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_POLES);
+
+#define D2_POLES 6
+const float D2_NUMERATOR[D2_POLES] = {-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
+const float D2_DENOMINATOR[D2_POLES + 1] = {1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
+
+TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_POLES);
 
 // ================== Function Declarations ==================
 float getMotorAngle();
 float getBallPosition();
 float offset(float value, float offset_up, float offset_down);
-float control(float target);
 float square(float period, float max = 1, float min = 0);
 
 // ================== Setup ==================
@@ -56,11 +61,29 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float target = square(3.0f, 0.7f, -0.7f); // -0.7 to 0.7 radians with 3 second period
+  float r1 = 0.25f; //square(3.0f, 0.7f, -0.7f); // -0.7 to 0.7 radians with 3 second period
 
-  float voltage = control(target);
+  // // Error (reference ball position - output ball position)
+  float e1 = r1 - getBallPosition();
 
-  setMotorVoltage(voltage);
+  // // Compute the angle using the transfer function
+  float u1 = d1.compute(e1);
+
+  // Constrain the target angle
+  float r2 = constrain(u1, MIN_ANGLE, MAX_ANGLE);
+
+  // Error (reference motor angle - output motor angle)
+  float e2 = r2 - getMotorAngle();
+
+  // Compute the voltage using the transfer function
+  float u2 = d2.compute(e2);
+
+  // Offset and constrain the voltage
+  u2 = offset(u2, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
+  u2 = constrain(u2, MIN_VOLTAGE, MAX_VOLTAGE);
+
+  // Set the motor voltage
+  setMotorVoltage(u2);
 
   delay(SAMPLING_TIME_MS);
 }
@@ -74,55 +97,14 @@ float getBallPosition() {
   return BALL_POSITION_M * ball_position_raw + BALL_POSITION_OFFSET;
 }
 
+// If the value is less than the center but greater than the offset_down, return the offset_down.
+// If the value is greater than the center but less than the offset_up, return the offset_up.
+// Otherwise, return the value.
 float offset(float value, float offset_up, float offset_down) {
-  if (value > 0) {
-    return fmax(value, offset_up);
-  } else {
-    return fmin(value, offset_down);
-  }
-}
-
-float control(float target) {
-  float y = getMotorAngle();  // Output (motor angle)
-  float r = constrain(target, MIN_ANGLE, MAX_ANGLE);  // Input (reference/target)
-  float e = r - y;  // Error
-
-  // Update error history first (shift right, then insert new error at index 0)
-  for (int i = CONTROL_POLES - 1; i > 0; i--) {
-    error_history[i] = error_history[i - 1];
-  }
-  error_history[0] = e;
-
-  // Compute voltage using transfer function difference equation
-  // y[k] = (b[0]*u[k] + b[1]*u[k-1] + ... - a[1]*y[k-1] - a[2]*y[k-2] - ...) / a[0]
-  
-  float u = 0.0f;  // Control voltage (before offset)
-  
-  // Numerator (feedforward) terms: b[0]*u[k] + b[1]*u[k-1] + ... + b[n-1]*u[k-n+1]
-  for (int i = 0; i < CONTROL_POLES; i++) {
-    u += CONTROL_NUMERATOR[i] * error_history[i];
-  }
-  
-  // Denominator (feedback) terms: -a[1]*y[k-1] - a[2]*y[k-2] - ... - a[n]*y[k-n]
-  // Skip a[0] as it's the leading coefficient (used for normalization)
-  for (int i = 0; i < CONTROL_POLES; i++) {
-    u -= CONTROL_DENOMINATOR[i + 1] * voltage_history[i];
-  }
-  
-  // Normalize by leading denominator coefficient (typically 1.0)
-  if (CONTROL_DENOMINATOR[0] != 0.0f) {
-    u /= CONTROL_DENOMINATOR[0];
-  }
-
-  u = constrain(u, MIN_VOLTAGE, MAX_VOLTAGE);
-  
-  // Update voltage history (shift right, then insert new voltage at index 0)
-  for (int i = CONTROL_POLES; i > 0; i--) {
-    voltage_history[i] = voltage_history[i - 1];
-  }
-  voltage_history[0] = u;
-
-  return offset(u, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
+  float center = (offset_up + offset_down) / 2.0f;
+  if (value < center && value > offset_down) return offset_down;
+  if (value > center && value < offset_up) return offset_up;
+  return value;
 }
 
 // ================== Square Wave Generator ==================
