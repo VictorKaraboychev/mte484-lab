@@ -61,12 +61,12 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float r1 = square(15.0f, 0.25f, 0.1f); // -0.7 to 0.7 radians with 3 second period
+  float r1 = square(15.0f, 0.25f, 0.1f);
 
-  // // Error (reference ball position - output ball position)
+  // Error (reference ball position - output ball position)
   float e1 = r1 - getBallPosition();
 
-  // // Compute the angle using the transfer function
+  // Compute the angle using the transfer function
   float u1 = d1.compute(e1);
 
   // Constrain the target angle
