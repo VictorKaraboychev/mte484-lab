@@ -61,7 +61,7 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
-  float r1 = 0.25f; //square(3.0f, 0.7f, -0.7f); // -0.7 to 0.7 radians with 3 second period
+  float r1 = square(15.0f, 0.25f, 0.1f); // -0.7 to 0.7 radians with 3 second period
 
   // // Error (reference ball position - output ball position)
   float e1 = r1 - getBallPosition();
