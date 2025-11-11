@@ -2,7 +2,7 @@
 #include <geeWhiz.h>
 #include <math.h>
 
-#include <transfer_function.h>
+#include "transfer_function.h"
 
 // ================== Pins ==================
 int MOT_PIN = A0;   // motor angle sensor
