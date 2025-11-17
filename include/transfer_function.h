@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 class TransferFunction {
 private:
@@ -7,11 +8,14 @@ private:
   const float* denominator;
   float* input_history;
   float* output_history;
+  unsigned long sample_time_ms;
+  unsigned long last_compute_time;
+  float last_output;
 
 public:
-  // Constructor: takes numerator, denominator arrays and number of poles
-  TransferFunction(const float* num, const float* den, int poles) 
-    : num_poles(poles), numerator(num), denominator(den) {
+  // Constructor: takes numerator, denominator arrays, number of poles, and sample time in milliseconds
+  TransferFunction(const float* num, const float* den, int poles, unsigned long sample_time_ms = 0) 
+    : num_poles(poles), numerator(num), denominator(den), sample_time_ms(sample_time_ms) {
     // Allocate and initialize input history (size = num_poles)
     input_history = new float[num_poles];
     for (int i = 0; i < num_poles; i++) {
@@ -23,6 +27,10 @@ public:
     for (int i = 0; i < num_poles + 1; i++) {
       output_history[i] = 0.0f;
     }
+    
+    // Initialize timing variables
+    last_compute_time = 0;
+    last_output = 0.0f;
   }
   
   // Destructor: free allocated memory
@@ -32,7 +40,24 @@ public:
   }
   
   // Compute transfer function output given current input value
+  // Only recomputes if enough time has passed since last computation (if sample_time_ms > 0)
   float compute(float current_value) {
+    unsigned long current_time = millis();
+    
+    // If sample_time_ms is 0, always compute (backward compatibility)
+    // Otherwise, check if enough time has passed
+    if (sample_time_ms > 0) {
+      // Check if enough time has passed (handle millis() overflow)
+      unsigned long time_since_last = (current_time >= last_compute_time) 
+        ? (current_time - last_compute_time) 
+        : (ULONG_MAX - last_compute_time + current_time + 1);
+      
+      if (time_since_last < sample_time_ms) {
+        // Not enough time has passed, return last output
+        return last_output;
+      }
+    }
+    
     // Update input history first (shift right, then insert new value at index 0)
     for (int i = num_poles - 1; i > 0; i--) {
       input_history[i] = input_history[i - 1];
@@ -64,6 +89,10 @@ public:
       output_history[i] = output_history[i - 1];
     }
     output_history[0] = output;
+
+    // Update timing and last output
+    last_compute_time = current_time;
+    last_output = output;
 
     return output;
   }

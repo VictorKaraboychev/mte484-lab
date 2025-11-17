@@ -22,7 +22,6 @@ volatile int ball_position_raw;
 #define MOTOR_VOLTAGE_OFFSET_UP 0.2f
 #define MOTOR_VOLTAGE_OFFSET_DOWN -0.55f
 
-#define SAMPLING_TIME_MS 15
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -31,16 +30,18 @@ volatile int ball_position_raw;
 #define MAX_VOLTAGE 6.0f
 
 #define D1_POLES 1
+#define D1_SAMPLING_TIME_MS 15
 const float D1_NUMERATOR[D1_POLES] = {-5.0f};
 const float D1_DENOMINATOR[D1_POLES + 1] = {1.0f, 0.0f};
 
-TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_POLES);
+TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_POLES, D1_SAMPLING_TIME_MS);
 
 #define D2_POLES 6
+#define D2_SAMPLING_TIME_MS 15
 const float D2_NUMERATOR[D2_POLES] = {-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
 const float D2_DENOMINATOR[D2_POLES + 1] = {1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
 
-TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_POLES);
+TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_POLES, D2_SAMPLING_TIME_MS);
 
 // ================== Function Declarations ==================
 float getMotorAngle();
@@ -55,7 +56,10 @@ void setup() {
   delay(300);
 
   geeWhizBegin();
-  set_control_interval_ms(SAMPLING_TIME_MS);
+
+  uint16_t min_sampling_time_ms = min(D1_SAMPLING_TIME_MS, D2_SAMPLING_TIME_MS);
+  set_control_interval_ms(min_sampling_time_ms);
+  
   setMotorVoltage(0.0f);
 }
 
@@ -84,8 +88,6 @@ void loop() {
 
   // Set the motor voltage
   setMotorVoltage(u2);
-
-  delay(SAMPLING_TIME_MS);
 }
 
 // ================== Control Functions ==================
