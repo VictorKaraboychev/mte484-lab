@@ -30,7 +30,7 @@ volatile int ball_position_raw;
 #define MAX_VOLTAGE 6.0f
 
 #define D1_POLES 1
-#define D1_SAMPLING_TIME_MS 15
+#define D1_SAMPLING_TIME_MS 100
 const float D1_NUMERATOR[D1_POLES] = {-5.0f};
 const float D1_DENOMINATOR[D1_POLES + 1] = {1.0f, 0.0f};
 
@@ -59,7 +59,7 @@ void setup() {
 
   uint16_t min_sampling_time_ms = min(D1_SAMPLING_TIME_MS, D2_SAMPLING_TIME_MS);
   set_control_interval_ms(min_sampling_time_ms);
-  
+
   setMotorVoltage(0.0f);
 }
 
