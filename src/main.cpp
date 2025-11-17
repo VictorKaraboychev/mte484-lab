@@ -67,7 +67,7 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = square(15.0f, 0.25f, 0.1f);
+  float r1 = square(60.0f, 0.25f, 0.1f);
 
   // Error (reference ball position - output ball position)
   float e1 = r1 - getBallPosition();

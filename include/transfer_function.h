@@ -50,7 +50,7 @@ public:
       // Check if enough time has passed (handle millis() overflow)
       unsigned long time_since_last = (current_time >= last_compute_time) 
         ? (current_time - last_compute_time) 
-        : (ULONG_MAX - last_compute_time + current_time + 1);
+        : (UINT32_MAX - last_compute_time + current_time + 1);
       
       if (time_since_last < sample_time_ms) {
         // Not enough time has passed, return last output
