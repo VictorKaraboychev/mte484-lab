@@ -65,6 +65,8 @@ void setup() {
 
 // ================== Main Loop ==================
 void loop() {
+  float t = millis() / 1000.0f;
+
   float r1 = square(15.0f, 0.25f, 0.1f);
 
   // Error (reference ball position - output ball position)
@@ -88,6 +90,24 @@ void loop() {
 
   // Set the motor voltage
   setMotorVoltage(u2);
+
+  // Print in CSV format
+  Serial.print(t);
+  Serial.print(",");
+  Serial.print(r1);
+  Serial.print(",");
+  Serial.print(e1);
+  Serial.print(",");
+  Serial.print(u1);
+  Serial.print(",");
+  Serial.print(r2);
+  Serial.print(",");
+  Serial.print(e2);
+  Serial.print(",");
+  Serial.print(u2);
+  Serial.println();
+
+  delay(1);
 }
 
 // ================== Control Functions ==================
