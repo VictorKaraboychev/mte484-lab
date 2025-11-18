@@ -67,7 +67,7 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = square(60.0f, 0.25f, 0.1f);
+  float r1 = square(40.0f, 0.25f, 0.1f);
 
   // Error (reference ball position - output ball position)
   float e1 = r1 - getBallPosition();
@@ -104,8 +104,8 @@ void loop() {
   Serial.print(",");
   Serial.print(e2);
   Serial.print(",");
-  Serial.print(u2);
-  Serial.println();
+  Serial.println(u2);
+  // Serial.println();
 
   delay(1);
 }
