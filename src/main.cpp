@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "transfer_function.h"
+#include "filters.h"
 
 // ================== Pins ==================
 int MOT_PIN = A0;   // motor angle sensor
@@ -22,7 +23,6 @@ volatile int ball_position_raw;
 #define MOTOR_VOLTAGE_OFFSET_UP 0.2f
 #define MOTOR_VOLTAGE_OFFSET_DOWN -0.55f
 
-
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
 
@@ -31,17 +31,28 @@ volatile int ball_position_raw;
 
 #define D1_POLES 9
 #define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_POLES] = {-4.6667, -0.8205042100921327, 12.749733718948663, 3.011958061151745, -13.251886108081184, -2.7326930373796032, 5.842003038376956, 0.7516494137945832, -0.8857683487913348};
-const float D1_DENOMINATOR[D1_POLES + 1] = {1.0, 0.45005803497233515, -1.0346096966794902, -0.8113069945050135, -0.18509710515030814, 0.22718650792451173, 0.3836101579035826, 0.11533188957179843, -0.06160906141722214, -0.028598619054999514};
+const float D1_NUMERATOR[D1_POLES] = {-4.6667, -0.807976880930087, 12.74184323226401, 2.9615417973265905, -13.206407858975847, -2.693232910293975, 5.800999019417404, 0.7432464337783642, -0.8755704592337324};
+const float D1_DENOMINATOR[D1_POLES + 1] = {1.0, 0.4493812095885689, -1.0346546779250596, -0.810244947120387, -0.18397931928026562, 0.2269321715263969, 0.3819777002977598, 0.11484883015491898, -0.060914218983568635, -0.02827554543703644};
 
 TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_POLES, D1_SAMPLING_TIME_MS);
 
 #define D2_POLES 6
-#define D2_SAMPLING_TIME_MS 15
+#define D2_SAMPLING_TIME_MS 19
 const float D2_NUMERATOR[D2_POLES] = {-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
 const float D2_DENOMINATOR[D2_POLES + 1] = {1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
 
 TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_POLES, D2_SAMPLING_TIME_MS);
+
+#define SENSOR_SAMPLING_TIME_MS 2
+
+LowPassFilter ball_position_low_pass_filter(
+  (1000.0f / D1_SAMPLING_TIME_MS) * 2.0f, 
+  1000.0f / SENSOR_SAMPLING_TIME_MS
+);
+LowPassFilter motor_angle_low_pass_filter(
+  (1000.0f / D2_SAMPLING_TIME_MS) * 2.0f, 
+  1000.0f / SENSOR_SAMPLING_TIME_MS
+);
 
 // ================== Function Declarations ==================
 float getMotorAngle();
@@ -57,8 +68,7 @@ void setup() {
 
   geeWhizBegin();
 
-  uint16_t min_sampling_time_ms = min(D1_SAMPLING_TIME_MS, D2_SAMPLING_TIME_MS);
-  set_control_interval_ms(min_sampling_time_ms);
+  set_control_interval_ms(2);
 
   setMotorVoltage(0.0f);
 }
@@ -68,18 +78,20 @@ void loop() {
   float t = millis() / 1000.0f;
 
   float r1 = square(40.0f, 0.25f, 0.1f);
+  float y1 = getBallPosition();
 
   // Error (reference ball position - output ball position)
-  float e1 = r1 - getBallPosition();
+  float e1 = r1 - y1;
 
   // Compute the angle using the transfer function
   float u1 = d1.compute(e1);
 
   // Constrain the target angle
   float r2 = constrain(u1, MIN_ANGLE, MAX_ANGLE);
+  float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
-  float e2 = r2 - getMotorAngle();
+  float e2 = r2 - y2;
 
   // Compute the voltage using the transfer function
   float u2 = d2.compute(e2);
@@ -91,21 +103,25 @@ void loop() {
   // Set the motor voltage
   setMotorVoltage(u2);
 
-  // Print in CSV format
-  Serial.print(t);
+  // Print in CSV format 4 decimal places
+  Serial.print(t, 4);
   Serial.print(",");
-  Serial.print(r1);
+  Serial.print(r1, 4);
   Serial.print(",");
-  Serial.print(e1);
+  Serial.print(y1, 4);
   Serial.print(",");
-  Serial.print(u1);
+  Serial.print(e1, 4);
   Serial.print(",");
-  Serial.print(r2);
+  Serial.print(u1, 4);
   Serial.print(",");
-  Serial.print(e2);
+  Serial.print(r2, 4);
   Serial.print(",");
-  Serial.println(u2);
-  // Serial.println();
+  Serial.print(y2, 4);
+  Serial.print(",");
+  Serial.print(e2, 4);
+  Serial.print(",");
+  Serial.print(u2, 4);
+  Serial.println();
 
   delay(1);
 }
@@ -144,9 +160,9 @@ float square(float period, float max, float min) {
 
 // ================== Control ISR ==================
 void interval_control_code(void) {
-  motor_angle_raw = analogRead(MOT_PIN);
-  ball_position_raw = analogRead(BAL_PIN);
-  
+  motor_angle_raw = motor_angle_low_pass_filter.process(analogRead(MOT_PIN));
+  ball_position_raw = ball_position_low_pass_filter.process(analogRead(BAL_PIN));
+
   digitalWrite(A5, HIGH);
   digitalWrite(A5, LOW);
 }

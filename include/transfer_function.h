@@ -1,4 +1,6 @@
-#pragma once
+#ifndef __TRANSFER_FUNCTION_H__
+#define __TRANSFER_FUNCTION_H__
+
 #include <Arduino.h>
 
 class TransferFunction {
@@ -98,3 +100,4 @@ public:
   }
 };
 
+#endif // __TRANSFER_FUNCTION_H__
