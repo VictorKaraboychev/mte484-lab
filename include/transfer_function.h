@@ -2,33 +2,29 @@
 #define __TRANSFER_FUNCTION_H__
 
 #include <Arduino.h>
+#include "circular_queue.h"
 
 class TransferFunction {
 private:
+  int num_zeros;
   int num_poles;
   const float* numerator;
   const float* denominator;
-  float* input_history;
-  float* output_history;
+  CircularQueue* input_history;
+  CircularQueue* output_history;
   unsigned long sample_time_ms;
   unsigned long last_compute_time;
   float last_output;
 
 public:
-  // Constructor: takes numerator, denominator arrays, number of poles, and sample time in milliseconds
-  TransferFunction(const float* num, const float* den, int poles, unsigned long sample_time_ms = 0) 
-    : num_poles(poles), numerator(num), denominator(den), sample_time_ms(sample_time_ms) {
-    // Allocate and initialize input history (size = num_poles)
-    input_history = new float[num_poles];
-    for (int i = 0; i < num_poles; i++) {
-      input_history[i] = 0.0f;
-    }
-    
-    // Allocate and initialize output history (size = num_poles + 1)
-    output_history = new float[num_poles + 1];
-    for (int i = 0; i < num_poles + 1; i++) {
-      output_history[i] = 0.0f;
-    }
+  // Constructor: takes numerator, denominator arrays, number of zeros, number of poles, and sample time in milliseconds
+  TransferFunction(const float* num, const float* den, int zeros, int poles, unsigned long sample_time_ms = 0) 
+    : num_zeros(zeros), num_poles(poles), numerator(num), denominator(den), sample_time_ms(sample_time_ms) {
+    // Create circular queues for history
+    // Input history needs to store num_zeros past inputs
+    input_history = new CircularQueue(num_zeros);
+    // Output history needs to store num_poles past outputs
+    output_history = new CircularQueue(num_poles);
     
     // Initialize timing variables
     last_compute_time = 0;
@@ -37,8 +33,8 @@ public:
   
   // Destructor: free allocated memory
   ~TransferFunction() {
-    delete[] input_history;
-    delete[] output_history;
+    delete input_history;
+    delete output_history;
   }
   
   // Compute transfer function output given current input value
@@ -60,25 +56,24 @@ public:
       }
     }
     
-    // Update input history first (shift right, then insert new value at index 0)
-    for (int i = num_poles - 1; i > 0; i--) {
-      input_history[i] = input_history[i - 1];
-    }
-    input_history[0] = current_value;
+    // Update input history (push new value to front of circular queue)
+    input_history->push(current_value);
 
     // Compute output using transfer function difference equation
     // y[k] = (b[0]*u[k] + b[1]*u[k-1] + ... - a[1]*y[k-1] - a[2]*y[k-2] - ...) / a[0]
     float output = 0.0f;
     
     // Numerator (feedforward) terms: b[0]*u[k] + b[1]*u[k-1] + ... + b[n-1]*u[k-n+1]
-    for (int i = 0; i < num_poles; i++) {
-      output += numerator[i] * input_history[i];
+    // get(0) is the most recent (u[k]), get(1) is u[k-1], etc.
+    for (int i = 0; i < num_zeros; i++) {
+      output += numerator[i] * input_history->get(i);
     }
     
     // Denominator (feedback) terms: -a[1]*y[k-1] - a[2]*y[k-2] - ... - a[n]*y[k-n]
     // Skip a[0] as it's the leading coefficient (used for normalization)
+    // get(0) is the most recent past output (y[k-1]), get(1) is y[k-2], etc.
     for (int i = 0; i < num_poles; i++) {
-      output -= denominator[i + 1] * output_history[i];
+      output -= denominator[i + 1] * output_history->get(i);
     }
     
     // Normalize by leading denominator coefficient (typically 1.0)
@@ -86,11 +81,8 @@ public:
       output /= denominator[0];
     }
     
-    // Update output history (shift right, then insert new output at index 0)
-    for (int i = num_poles; i > 0; i--) {
-      output_history[i] = output_history[i - 1];
-    }
-    output_history[0] = output;
+    // Update output history (push new output to front of circular queue)
+    output_history->push(output);
 
     // Update timing and last output
     last_compute_time = current_time;

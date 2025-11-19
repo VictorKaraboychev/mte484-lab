@@ -21,7 +21,7 @@ volatile int ball_position_raw;
 #define BALL_POSITION_OFFSET -0.3197270408
 
 #define MOTOR_VOLTAGE_OFFSET_UP 0.2f
-#define MOTOR_VOLTAGE_OFFSET_DOWN -0.55f
+#define MOTOR_VOLTAGE_OFFSET_DOWN -0.75f
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -29,19 +29,21 @@ volatile int ball_position_raw;
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define D1_POLES 9
+#define D1_ZEROS 9
+#define D1_POLES 10
 #define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_POLES] = {-4.6667, -0.807976880930087, 12.74184323226401, 2.9615417973265905, -13.206407858975847, -2.693232910293975, 5.800999019417404, 0.7432464337783642, -0.8755704592337324};
-const float D1_DENOMINATOR[D1_POLES + 1] = {1.0, 0.4493812095885689, -1.0346546779250596, -0.810244947120387, -0.18397931928026562, 0.2269321715263969, 0.3819777002977598, 0.11484883015491898, -0.060914218983568635, -0.02827554543703644};
+const float D1_NUMERATOR[D1_ZEROS] = {-4.6667, -0.807976880930087, 12.74184323226401, 2.9615417973265905, -13.206407858975847, -2.693232910293975, 5.800999019417404, 0.7432464337783642, -0.8755704592337324};
+const float D1_DENOMINATOR[D1_POLES] = {1.0, 0.4493812095885689, -1.0346546779250596, -0.810244947120387, -0.18397931928026562, 0.2269321715263969, 0.3819777002977598, 0.11484883015491898, -0.060914218983568635, -0.02827554543703644};
 
-TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_POLES, D1_SAMPLING_TIME_MS);
+TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS);
 
-#define D2_POLES 6
-#define D2_SAMPLING_TIME_MS 19
-const float D2_NUMERATOR[D2_POLES] = {-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
-const float D2_DENOMINATOR[D2_POLES + 1] = {1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
+#define D2_ZEROS 3
+#define D2_POLES 3
+#define D2_SAMPLING_TIME_MS 15
+const float D2_NUMERATOR[D2_ZEROS] = {-1.91368516,-0.37969893,-0.48146727}; //{-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
+const float D2_DENOMINATOR[D2_POLES] = {1.0,-1.03457083,0.77769033}; //{1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
 
-TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_POLES, D2_SAMPLING_TIME_MS);
+TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS);
 
 #define SENSOR_SAMPLING_TIME_MS 2
 
@@ -77,17 +79,17 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = square(40.0f, 0.25f, 0.1f);
-  float y1 = getBallPosition();
+  // float r1 = square(40.0f, 0.25f, 0.1f);
+  // float y1 = getBallPosition();
 
-  // Error (reference ball position - output ball position)
-  float e1 = r1 - y1;
+  // // Error (reference ball position - output ball position)
+  // float e1 = r1 - y1;
 
-  // Compute the angle using the transfer function
-  float u1 = d1.compute(e1);
+  // // Compute the angle using the transfer function
+  // float u1 = d1.compute(e1);
 
   // Constrain the target angle
-  float r2 = constrain(u1, MIN_ANGLE, MAX_ANGLE);
+  float r2 = square(3.0f, 0.5f, -0.5f); // constrain(u1, MIN_ANGLE, MAX_ANGLE);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
@@ -106,14 +108,14 @@ void loop() {
   // Print in CSV format 4 decimal places
   Serial.print(t, 4);
   Serial.print(",");
-  Serial.print(r1, 4);
-  Serial.print(",");
-  Serial.print(y1, 4);
-  Serial.print(",");
-  Serial.print(e1, 4);
-  Serial.print(",");
-  Serial.print(u1, 4);
-  Serial.print(",");
+  // Serial.print(r1, 4);
+  // Serial.print(",");
+  // Serial.print(y1, 4);
+  // Serial.print(",");
+  // Serial.print(e1, 4);
+  // Serial.print(",");
+  // Serial.print(u1, 4);
+  // Serial.print(",");
   Serial.print(r2, 4);
   Serial.print(",");
   Serial.print(y2, 4);
