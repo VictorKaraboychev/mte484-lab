@@ -1,8 +1,6 @@
 #ifndef __CIRCULAR_QUEUE_H__
 #define __CIRCULAR_QUEUE_H__
 
-#include <Arduino.h>
-
 class CircularQueue {
 private:
   float* buffer;

@@ -15,11 +15,14 @@ private:
   unsigned long sample_time_ms;
   unsigned long last_compute_time;
   float last_output;
+  float min_output;
+  float max_output;
+  bool constraints_enabled;
 
 public:
-  // Constructor: takes numerator, denominator arrays, number of zeros, number of poles, and sample time in milliseconds
-  TransferFunction(const float* num, const float* den, int zeros, int poles, unsigned long sample_time_ms = 0) 
-    : num_zeros(zeros), num_poles(poles), numerator(num), denominator(den), sample_time_ms(sample_time_ms) {
+  // Constructor: takes numerator, denominator arrays, number of zeros, number of poles, sample time in milliseconds, and optional output constraints
+  TransferFunction(const float* num, const float* den, int zeros, int poles, unsigned long sample_time_ms = 0, float min_out = 0.0f, float max_out = 0.0f) 
+    : num_zeros(zeros), num_poles(poles), numerator(num), denominator(den), sample_time_ms(sample_time_ms), min_output(min_out), max_output(max_out) {
     // Create circular queues for history
     // Input history needs to store num_zeros past inputs
     input_history = new CircularQueue(num_zeros);
@@ -29,6 +32,9 @@ public:
     // Initialize timing variables
     last_compute_time = 0;
     last_output = 0.0f;
+    
+    // Enable constraints if min < max (if both are 0, constraints are disabled)
+    constraints_enabled = (min_output < max_output);
   }
   
   // Destructor: free allocated memory
@@ -81,6 +87,11 @@ public:
       output /= denominator[0];
     }
     
+    // Apply output constraints if enabled
+    if (constraints_enabled) {
+      output = constrain(output, min_output, max_output);
+    }
+    
     // Update output history (push new output to front of circular queue)
     output_history->push(output);
 
@@ -89,6 +100,18 @@ public:
     last_output = output;
 
     return output;
+  }
+  
+  // Set output constraints (min and max)
+  void setConstraints(float min_out, float max_out) {
+    min_output = min_out;
+    max_output = max_out;
+    constraints_enabled = (min_output < max_output);
+  }
+  
+  // Disable output constraints
+  void disableConstraints() {
+    constraints_enabled = false;
   }
 };
 

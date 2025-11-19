@@ -15,13 +15,13 @@ volatile int ball_position_raw;
 
 // ================== Configuration ==================
 #define MOTOR_ENCODER_M -0.01377891515
-#define MOTOR_ENCODER_OFFSET 7.05480455543
+#define MOTOR_ENCODER_OFFSET (7.05480455543 - 1.3917)
 
 #define BALL_POSITION_M 0.001031377
-#define BALL_POSITION_OFFSET -0.3197270408
+#define BALL_POSITION_OFFSET (-0.3197270408)
 
-#define MOTOR_VOLTAGE_OFFSET_UP 0.2f
-#define MOTOR_VOLTAGE_OFFSET_DOWN -0.75f
+#define MOTOR_VOLTAGE_OFFSET_UP 0.1f
+#define MOTOR_VOLTAGE_OFFSET_DOWN -0.6f
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -29,30 +29,30 @@ volatile int ball_position_raw;
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define D1_ZEROS 9
-#define D1_POLES 10
+#define D1_ZEROS 2
+#define D1_POLES 3
 #define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_ZEROS] = {-4.6667, -0.807976880930087, 12.74184323226401, 2.9615417973265905, -13.206407858975847, -2.693232910293975, 5.800999019417404, 0.7432464337783642, -0.8755704592337324};
-const float D1_DENOMINATOR[D1_POLES] = {1.0, 0.4493812095885689, -1.0346546779250596, -0.810244947120387, -0.18397931928026562, 0.2269321715263969, 0.3819777002977598, 0.11484883015491898, -0.060914218983568635, -0.02827554543703644};
+const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542};
+const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687};
 
-TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS);
+TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS, MIN_ANGLE, MAX_ANGLE);
 
-#define D2_ZEROS 3
+#define D2_ZEROS 2
 #define D2_POLES 3
 #define D2_SAMPLING_TIME_MS 15
-const float D2_NUMERATOR[D2_ZEROS] = {-1.91368516,-0.37969893,-0.48146727}; //{-3.077769438503281,10.138128350102296,-14.855920046134203,11.987988761412678,-5.124585949359640,0.889457904200626};
-const float D2_DENOMINATOR[D2_POLES] = {1.0,-1.03457083,0.77769033}; //{1.0,-2.953909355670471,3.663745867407955,-2.446303177829365,0.934801603263164,-0.216826988359841,0.032790888211790};
+const float D2_NUMERATOR[D2_ZEROS] = {-1.930534,0.494861};
+const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.272223,0.666395};
 
-TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS);
+TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS, MIN_VOLTAGE, MAX_VOLTAGE);
 
 #define SENSOR_SAMPLING_TIME_MS 2
 
 LowPassFilter ball_position_low_pass_filter(
-  (1000.0f / D1_SAMPLING_TIME_MS) * 2.0f, 
+  20.0f, 
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 LowPassFilter motor_angle_low_pass_filter(
-  (1000.0f / D2_SAMPLING_TIME_MS) * 2.0f, 
+  100.0f,
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 
@@ -79,28 +79,25 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  // float r1 = square(40.0f, 0.25f, 0.1f);
-  // float y1 = getBallPosition();
+  float r1 = 0.1; //square(40.0f, 0.25f, 0.1f);
+  float y1 = getBallPosition();
 
-  // // Error (reference ball position - output ball position)
-  // float e1 = r1 - y1;
+  // Error (reference ball position - output ball position)
+  float e1 = r1 - y1;
 
-  // // Compute the angle using the transfer function
-  // float u1 = d1.compute(e1);
-
-  // Constrain the target angle
-  float r2 = square(3.0f, 0.5f, -0.5f); // constrain(u1, MIN_ANGLE, MAX_ANGLE);
+  // Compute the angle using the transfer function (already constrained)
+  float u1 = d1.compute(e1);
+  float r2 = u1;
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
   float e2 = r2 - y2;
 
-  // Compute the voltage using the transfer function
+  // Compute the voltage using the transfer function (already constrained)
   float u2 = d2.compute(e2);
 
-  // Offset and constrain the voltage
+  // Offset the voltage (constraints already applied in transfer function)
   u2 = offset(u2, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
-  u2 = constrain(u2, MIN_VOLTAGE, MAX_VOLTAGE);
 
   // Set the motor voltage
   setMotorVoltage(u2);
@@ -108,14 +105,14 @@ void loop() {
   // Print in CSV format 4 decimal places
   Serial.print(t, 4);
   Serial.print(",");
-  // Serial.print(r1, 4);
-  // Serial.print(",");
-  // Serial.print(y1, 4);
-  // Serial.print(",");
-  // Serial.print(e1, 4);
-  // Serial.print(",");
-  // Serial.print(u1, 4);
-  // Serial.print(",");
+  Serial.print(r1, 4);
+  Serial.print(",");
+  Serial.print(y1, 4);
+  Serial.print(",");
+  Serial.print(e1, 4);
+  Serial.print(",");
+  Serial.print(u1, 4);
+  Serial.print(",");
   Serial.print(r2, 4);
   Serial.print(",");
   Serial.print(y2, 4);
@@ -124,8 +121,6 @@ void loop() {
   Serial.print(",");
   Serial.print(u2, 4);
   Serial.println();
-
-  delay(1);
 }
 
 // ================== Control Functions ==================
