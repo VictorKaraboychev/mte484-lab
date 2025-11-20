@@ -20,8 +20,13 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define MOTOR_VOLTAGE_OFFSET_UP 0.1f
-#define MOTOR_VOLTAGE_OFFSET_DOWN -0.6f
+#define BALL_ANGLE_OFFSET_UP 0.03f
+#define BALL_ANGLE_OFFSET_DOWN -0.03f
+
+#define MOTOR_VOLTAGE_OFFSET_UP_0 -0.05f
+#define MOTOR_VOLTAGE_OFFSET_DOWN_0 -0.71f
+#define MOTOR_VOLTAGE_OFFSET_UP_40 -0.15f
+#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.02f
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -40,8 +45,8 @@ TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLIN
 #define D2_ZEROS 2
 #define D2_POLES 3
 #define D2_SAMPLING_TIME_MS 15
-const float D2_NUMERATOR[D2_ZEROS] = {-1.930534,0.494861};
-const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.272223,0.666395};
+const float D2_NUMERATOR[D2_ZEROS] = {-1.736621,-0.139124};
+const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.180573,0.609533};
 
 TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS, MIN_VOLTAGE, MAX_VOLTAGE);
 
@@ -80,7 +85,7 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = 0.1; //square(40.0f, 0.25f, 0.1f);
+  float r1 = square(20.0f, 0.25f, 0.1f);
   float y1 = getBallPosition();
 
   // Error (reference ball position - output ball position)
@@ -88,7 +93,7 @@ void loop() {
 
   // Compute the angle using the transfer function (already constrained)
   float u1 = d1.compute(e1, millis());
-  float r2 = u1;
+  float r2 = square(10.0f, 0.5f, -0.5f); // offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
@@ -98,7 +103,12 @@ void loop() {
   float u2 = d2.compute(e2, millis());
 
   // Offset the voltage (constraints already applied in transfer function)
-  u2 = offset(u2, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
+
+  float offset_ball_effect = y1 / 0.4043f;
+  float voltage_offset_up = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - offset_ball_effect);
+  float voltage_offset_down = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - offset_ball_effect);
+
+  u2 = offset(u2, voltage_offset_up, voltage_offset_down);
 
   // Set the motor voltage
   setMotorVoltage(u2);
@@ -122,6 +132,11 @@ void loop() {
   Serial.print(",");
   Serial.print(u2, 4);
   Serial.println();
+  Serial.print(offset_ball_effect, 4);
+  Serial.print(",");
+  Serial.print(voltage_offset_up, 4);
+  Serial.print(",");
+  Serial.print(voltage_offset_down, 4);
 }
 
 // ================== Control Functions ==================
@@ -137,10 +152,8 @@ float getBallPosition() {
 // If the value is greater than the center but less than the offset_up, return the offset_up.
 // Otherwise, return the value.
 float offset(float value, float offset_up, float offset_down) {
-  float center = (offset_up + offset_down) / 2.0f;
-  if (value < center && value > offset_down) return offset_down;
-  if (value > center && value < offset_up) return offset_up;
-  return value;
+  if (value <= 0) return value + offset_down;
+  if (value > 0) return value + offset_up;
 }
 
 // ================== Square Wave Generator ==================
