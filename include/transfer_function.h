@@ -1,7 +1,7 @@
 #ifndef __TRANSFER_FUNCTION_H__
 #define __TRANSFER_FUNCTION_H__
 
-#include <Arduino.h>
+#include <cstdint>
 #include "circular_queue.h"
 
 class TransferFunction {
@@ -25,7 +25,7 @@ public:
     // Create circular queues for history
     // Input history needs to store num_zeros past inputs
     input_history = new CircularQueue(num_zeros);
-    // Output history needs to store num_poles past outputs
+    // Output history needs to store num_poles past outputs 
     output_history = new CircularQueue(num_poles - 1);
     
     // Initialize timing variables
@@ -39,16 +39,16 @@ public:
     delete output_history;
   }
   
-  // Compute transfer function output given current input value
+  // Compute transfer function output given current input value and current time in milliseconds
   // Only recomputes if enough time has passed since last computation (if sample_time_ms > 0)
-  float compute(float current_value) {
-    unsigned long current_time = millis();
+  float compute(float current_value, uint32_t current_time_ms) {
+    uint32_t current_time = current_time_ms;
     
     // If sample_time_ms is 0, always compute (backward compatibility)
     // Otherwise, check if enough time has passed
     if (sample_time_ms > 0) {
       // Check if enough time has passed (handle millis() overflow)
-      unsigned long time_since_last = (current_time >= last_compute_time) 
+      uint32_t time_since_last = (current_time >= last_compute_time) 
         ? (current_time - last_compute_time) 
         : (UINT32_MAX - last_compute_time + current_time + 1);
       

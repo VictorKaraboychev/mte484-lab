@@ -86,7 +86,7 @@ void loop() {
   float e1 = r1 - y1;
 
   // Compute the angle using the transfer function (already constrained)
-  float u1 = d1.compute(e1);
+  float u1 = d1.compute(e1, millis());
   float r2 = u1;
   float y2 = getMotorAngle();
 
@@ -94,7 +94,7 @@ void loop() {
   float e2 = r2 - y2;
 
   // Compute the voltage using the transfer function (already constrained)
-  float u2 = d2.compute(e2);
+  float u2 = d2.compute(e2, millis());
 
   // Offset the voltage (constraints already applied in transfer function)
   u2 = offset(u2, MOTOR_VOLTAGE_OFFSET_UP, MOTOR_VOLTAGE_OFFSET_DOWN);
