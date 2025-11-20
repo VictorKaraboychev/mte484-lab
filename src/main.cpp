@@ -15,10 +15,10 @@ volatile int ball_position_raw;
 
 // ================== Configuration ==================
 #define MOTOR_ENCODER_M -0.01377891515
-#define MOTOR_ENCODER_OFFSET (7.05480455543 - 1.3917)
+#define MOTOR_ENCODER_OFFSET 7.05480455543
 
 #define BALL_POSITION_M 0.001031377
-#define BALL_POSITION_OFFSET (-0.3197270408)
+#define BALL_POSITION_OFFSET -0.3197270408
 
 #define MOTOR_VOLTAGE_OFFSET_UP 0.1f
 #define MOTOR_VOLTAGE_OFFSET_DOWN -0.6f
@@ -66,6 +66,7 @@ float square(float period, float max = 1, float min = 0);
 void setup() {
   pinMode(A5, OUTPUT);
   Serial.begin(115200);
+
   delay(300);
 
   geeWhizBegin();
