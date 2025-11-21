@@ -4,6 +4,7 @@
 
 #include "transfer_function.h"
 #include "filters.h"
+#include "pid.h"
 
 // ================== Pins ==================
 int MOT_PIN = A0;   // motor angle sensor
@@ -61,6 +62,8 @@ LowPassFilter motor_angle_low_pass_filter(
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 
+PID pid(-0.25f, 0.0f, -0.01f, MIN_ANGLE, MAX_ANGLE, MIN_ANGLE, MAX_ANGLE);
+
 // ================== Function Declarations ==================
 float getMotorAngle();
 float getBallPosition();
@@ -85,14 +88,14 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = square(20.0f, 0.25f, 0.1f);
+  float r1 = 0.2; //square(20.0f, 0.25f, 0.1f);
   float y1 = getBallPosition();
 
   // Error (reference ball position - output ball position)
   float e1 = r1 - y1;
 
   // Compute the angle using the transfer function (already constrained)
-  float u1 = d1.compute(e1, millis());
+  float u1 = pid.update(e1, millis()); // + d1.compute(e1, millis());
   float r2 = u1;
   // r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
