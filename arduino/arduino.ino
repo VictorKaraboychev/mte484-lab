@@ -21,7 +21,7 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define BALL_ANGLE_OFFSET_UP 0.07f
+#define BALL_ANGLE_OFFSET_UP 0.04f
 #define BALL_ANGLE_OFFSET_DOWN -0.03f
 
 #define MOTOR_VOLTAGE_OFFSET_UP_0 -0.1f
@@ -35,19 +35,31 @@ volatile int ball_position_raw;
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define D1_ZEROS 2
-#define D1_POLES 3
-#define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542}; // {-1.967128,1.994930};
-const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687}; //{1.0,-0.791685,0.439943}; 
+// #define D1_ZEROS 2
+// #define D1_POLES 3
+// #define D1_SAMPLING_TIME_MS 500
+// const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542};
+// const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687};
+
+#define D1_ZEROS 13
+#define D1_POLES 14
+#define D1_SAMPLING_TIME_MS 400
+const float D1_NUMERATOR[D1_ZEROS] = {-5.999999999985675, -18.368153283758868, -25.927707803108088, -21.182689149067912, -8.785738440128302, -1.121615595275515, -0.357031332551433, -0.004368348242435, -0.146270777259590, 0.127838988696212, 7.061321925863680, 12.238280172965382, 6.208907394698709};
+const float D1_DENOMINATOR[D1_POLES] = {1.000000000000000, 3.061358880638121, 5.263190532262172, 6.975018308655773, 7.767546126413745, 7.580074448097665, 6.772041950999174, 5.767977185615438, 4.725710572534805, 3.668063284926793, 2.609120115546353, 1.549752288019725, 0.639248187995367, 0.128585429881256};
 
 TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS, MIN_ANGLE, MAX_ANGLE);
 
-#define D2_ZEROS 2
-#define D2_POLES 3
+// #define D2_ZEROS 2
+// #define D2_POLES 3
+// #define D2_SAMPLING_TIME_MS 15
+// const float D2_NUMERATOR[D2_ZEROS] = {-1.736621,-0.139124};
+// const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.180573,0.609533};
+
+#define D2_ZEROS 6
+#define D2_POLES 7
 #define D2_SAMPLING_TIME_MS 15
-const float D2_NUMERATOR[D2_ZEROS] = {-1.736621,-0.139124};
-const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.180573,0.609533};
+const float D2_NUMERATOR[D2_ZEROS] = {-3.0777694385032808 10.138128350102296 -14.855920046134203 11.987988761412678 -5.12458594935964 0.88945790420062631};
+const float D2_DENOMINATOR[D2_POLES] = {1.000000000000000 -2.9539093556704712 3.6637458674079548 -2.4463031778293649 0.93480160326316364 -0.216826988359841 0.032790888211789562};
 
 TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS, MIN_VOLTAGE, MAX_VOLTAGE);
 
@@ -92,24 +104,24 @@ void loop() {
   // Error (reference ball position - output ball position)
   float e1 = r1 - y1;
 
-  // Compute the angle using the transfer function (already constrained)
+  // Compute the angle using the outer loop transfer function with constraints applied
   float u1 = d1.compute(e1, millis());
-  float r2 = u1;
-  // r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
+
+  // Offset the angle (constraints already applied in transfer function)
+  float r2 =  offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
   float e2 = r2 - y2;
 
-  // Compute the voltage using the transfer function (already constrained)
+  // Compute the voltage using the inner loop transfer function with constraints applied
   float u2 = d2.compute(e2, millis());
 
   // Offset the voltage (constraints already applied in transfer function)
-
-  float offset_ball_effect = y1 / 0.4043f;
-  float voltage_offset_up = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - offset_ball_effect);
-  float voltage_offset_down = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - offset_ball_effect);
-
+  // Voltage offsets are a function of the ball position
+  float ball_ratio = y1 / 0.4043f;
+  float voltage_offset_up = ball_ratio * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - ball_ratio);
+  float voltage_offset_down = ball_ratio * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - ball_ratio);
   u2 = offset(u2, voltage_offset_up, voltage_offset_down);
 
   // Set the motor voltage
