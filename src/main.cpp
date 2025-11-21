@@ -20,13 +20,13 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define BALL_ANGLE_OFFSET_UP 0.03f
+#define BALL_ANGLE_OFFSET_UP 0.07f
 #define BALL_ANGLE_OFFSET_DOWN -0.03f
 
-#define MOTOR_VOLTAGE_OFFSET_UP_0 -0.05f
-#define MOTOR_VOLTAGE_OFFSET_DOWN_0 -0.71f
-#define MOTOR_VOLTAGE_OFFSET_UP_40 -0.15f
-#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.02f
+#define MOTOR_VOLTAGE_OFFSET_UP_0 -0.1f
+#define MOTOR_VOLTAGE_OFFSET_DOWN_0 -0.75f
+#define MOTOR_VOLTAGE_OFFSET_UP_40 -0.2f
+#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.07f
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -37,8 +37,8 @@ volatile int ball_position_raw;
 #define D1_ZEROS 2
 #define D1_POLES 3
 #define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542};
-const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687};
+const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542}; // {-1.967128,1.994930};
+const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687}; //{1.0,-0.791685,0.439943}; 
 
 TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS, MIN_ANGLE, MAX_ANGLE);
 
@@ -53,7 +53,7 @@ TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLIN
 #define SENSOR_SAMPLING_TIME_MS 2
 
 LowPassFilter ball_position_low_pass_filter(
-  20.0f, 
+  50.0f, 
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 LowPassFilter motor_angle_low_pass_filter(
@@ -93,7 +93,7 @@ void loop() {
 
   // Compute the angle using the transfer function (already constrained)
   float u1 = d1.compute(e1, millis());
-  float r2 = square(10.0f, 0.5f, -0.5f); // offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
+  float r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
@@ -131,12 +131,12 @@ void loop() {
   Serial.print(e2, 4);
   Serial.print(",");
   Serial.print(u2, 4);
-  Serial.println();
   Serial.print(offset_ball_effect, 4);
   Serial.print(",");
   Serial.print(voltage_offset_up, 4);
   Serial.print(",");
   Serial.print(voltage_offset_down, 4);
+  Serial.println();
 }
 
 // ================== Control Functions ==================
@@ -148,12 +148,12 @@ float getBallPosition() {
   return BALL_POSITION_M * ball_position_raw + BALL_POSITION_OFFSET;
 }
 
-// If the value is less than the center but greater than the offset_down, return the offset_down.
-// If the value is greater than the center but less than the offset_up, return the offset_up.
-// Otherwise, return the value.
 float offset(float value, float offset_up, float offset_down) {
-  if (value <= 0) return value + offset_down;
-  if (value > 0) return value + offset_up;
+  if (value > 0) {
+    return value + offset_up;
+  } else  {
+    return value + offset_down;
+  }
 }
 
 // ================== Square Wave Generator ==================
