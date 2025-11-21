@@ -26,7 +26,7 @@ volatile int ball_position_raw;
 #define MOTOR_VOLTAGE_OFFSET_UP_0 -0.1f
 #define MOTOR_VOLTAGE_OFFSET_DOWN_0 -0.75f
 #define MOTOR_VOLTAGE_OFFSET_UP_40 -0.2f
-#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.07f
+#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.00f
 
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
@@ -53,11 +53,11 @@ TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLIN
 #define SENSOR_SAMPLING_TIME_MS 2
 
 LowPassFilter ball_position_low_pass_filter(
-  50.0f, 
+  10.0f, 
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 LowPassFilter motor_angle_low_pass_filter(
-  100.0f,
+  150.0f,
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 
@@ -93,7 +93,8 @@ void loop() {
 
   // Compute the angle using the transfer function (already constrained)
   float u1 = d1.compute(e1, millis());
-  float r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
+  float r2 = u1;
+  // r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
@@ -131,11 +132,6 @@ void loop() {
   Serial.print(e2, 4);
   Serial.print(",");
   Serial.print(u2, 4);
-  Serial.print(offset_ball_effect, 4);
-  Serial.print(",");
-  Serial.print(voltage_offset_up, 4);
-  Serial.print(",");
-  Serial.print(voltage_offset_down, 4);
   Serial.println();
 }
 
