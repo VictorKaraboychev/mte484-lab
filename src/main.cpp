@@ -20,7 +20,7 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define BALL_ANGLE_OFFSET_UP 0.07f
+#define BALL_ANGLE_OFFSET_UP 0.04f
 #define BALL_ANGLE_OFFSET_DOWN -0.03f
 
 #define MOTOR_VOLTAGE_OFFSET_UP_0 -0.1f
@@ -37,8 +37,8 @@ volatile int ball_position_raw;
 #define D1_ZEROS 2
 #define D1_POLES 3
 #define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542}; // {-1.967128,1.994930};
-const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687}; //{1.0,-0.791685,0.439943}; 
+const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542};
+const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687};
 
 TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS, MIN_ANGLE, MAX_ANGLE);
 
@@ -91,24 +91,24 @@ void loop() {
   // Error (reference ball position - output ball position)
   float e1 = r1 - y1;
 
-  // Compute the angle using the transfer function (already constrained)
+  // Compute the angle using the outer loop transfer function with constraints applied
   float u1 = d1.compute(e1, millis());
-  float r2 = u1;
-  // r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
+
+  // Offset the angle (constraints already applied in transfer function)
+  float r2 =  offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
   float e2 = r2 - y2;
 
-  // Compute the voltage using the transfer function (already constrained)
+  // Compute the voltage using the inner loop transfer function with constraints applied
   float u2 = d2.compute(e2, millis());
 
   // Offset the voltage (constraints already applied in transfer function)
-
-  float offset_ball_effect = y1 / 0.4043f;
-  float voltage_offset_up = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - offset_ball_effect);
-  float voltage_offset_down = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - offset_ball_effect);
-
+  // Voltage offsets are a function of the ball position
+  float ball_ratio = y1 / 0.4043f;
+  float voltage_offset_up = ball_ratio * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - ball_ratio);
+  float voltage_offset_down = ball_ratio * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - ball_ratio);
   u2 = offset(u2, voltage_offset_up, voltage_offset_down);
 
   // Set the motor voltage
