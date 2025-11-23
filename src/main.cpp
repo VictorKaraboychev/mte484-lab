@@ -21,40 +21,16 @@ volatile int ball_position_raw;
 #define BALL_POSITION_M 0.001031377
 #define BALL_POSITION_OFFSET -0.3197270408
 
-#define BALL_ANGLE_OFFSET_UP 0.07f
-#define BALL_ANGLE_OFFSET_DOWN -0.03f
-
-#define MOTOR_VOLTAGE_OFFSET_UP_0 -0.1f
-#define MOTOR_VOLTAGE_OFFSET_DOWN_0 -0.75f
-#define MOTOR_VOLTAGE_OFFSET_UP_40 -0.2f
-#define MOTOR_VOLTAGE_OFFSET_DOWN_40 -1.00f
-
 #define MAX_ANGLE 0.7f
 #define MIN_ANGLE -0.7f
 
 #define MIN_VOLTAGE -6.0f
 #define MAX_VOLTAGE 6.0f
 
-#define D1_ZEROS 2
-#define D1_POLES 3
-#define D1_SAMPLING_TIME_MS 500
-const float D1_NUMERATOR[D1_ZEROS] = {-1.950542,1.950542}; // {-1.967128,1.994930};
-const float D1_DENOMINATOR[D1_POLES] = {1.000000,-0.714464,0.313687}; //{1.0,-0.791685,0.439943}; 
-
-TransferFunction d1(D1_NUMERATOR, D1_DENOMINATOR, D1_ZEROS, D1_POLES, D1_SAMPLING_TIME_MS, MIN_ANGLE, MAX_ANGLE);
-
-#define D2_ZEROS 2
-#define D2_POLES 3
-#define D2_SAMPLING_TIME_MS 15
-const float D2_NUMERATOR[D2_ZEROS] = {-1.736621,-0.139124};
-const float D2_DENOMINATOR[D2_POLES] = {1.000000,-1.180573,0.609533};
-
-TransferFunction d2(D2_NUMERATOR, D2_DENOMINATOR, D2_ZEROS, D2_POLES, D2_SAMPLING_TIME_MS, MIN_VOLTAGE, MAX_VOLTAGE);
-
 #define SENSOR_SAMPLING_TIME_MS 2
 
 LowPassFilter ball_position_low_pass_filter(
-  10.0f, 
+  4.0f, 
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 LowPassFilter motor_angle_low_pass_filter(
@@ -62,7 +38,8 @@ LowPassFilter motor_angle_low_pass_filter(
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 
-PID pid(-0.25f, 0.0f, -0.01f, MIN_ANGLE, MAX_ANGLE, MIN_ANGLE, MAX_ANGLE);
+PID pid_outer(-1.920872f, -0.5f, -3.117162f, 394, MIN_ANGLE, MAX_ANGLE);
+PID pid_inner(-7.892344f, -0.998973, -0.177016f, 15, MIN_VOLTAGE, MAX_VOLTAGE);
 
 // ================== Function Declarations ==================
 float getMotorAngle();
@@ -88,31 +65,24 @@ void setup() {
 void loop() {
   float t = millis() / 1000.0f;
 
-  float r1 = 0.2; //square(20.0f, 0.25f, 0.1f);
+  float r1 = square(20.0f, 0.25f, 0.1f);
   float y1 = getBallPosition();
 
   // Error (reference ball position - output ball position)
   float e1 = r1 - y1;
 
   // Compute the angle using the transfer function (already constrained)
-  float u1 = pid.update(e1, millis()); // + d1.compute(e1, millis());
+  float u1 = pid_outer.compute(e1, millis());
+  u1 = constrain(u1, MIN_ANGLE, MAX_ANGLE);
   float r2 = u1;
-  // r2 = offset(u1, BALL_ANGLE_OFFSET_UP, BALL_ANGLE_OFFSET_DOWN);
   float y2 = getMotorAngle();
 
   // Error (reference motor angle - output motor angle)
   float e2 = r2 - y2;
 
   // Compute the voltage using the transfer function (already constrained)
-  float u2 = d2.compute(e2, millis());
-
-  // Offset the voltage (constraints already applied in transfer function)
-
-  float offset_ball_effect = y1 / 0.4043f;
-  float voltage_offset_up = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_UP_40 + MOTOR_VOLTAGE_OFFSET_UP_0 * (1 - offset_ball_effect);
-  float voltage_offset_down = offset_ball_effect * MOTOR_VOLTAGE_OFFSET_DOWN_40 + MOTOR_VOLTAGE_OFFSET_DOWN_0 * (1 - offset_ball_effect);
-
-  u2 = offset(u2, voltage_offset_up, voltage_offset_down);
+  float u2 = pid_inner.compute(e2, millis());
+  u2 = constrain(u2, MIN_VOLTAGE, MAX_VOLTAGE);
 
   // Set the motor voltage
   setMotorVoltage(u2);
