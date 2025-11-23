@@ -38,7 +38,7 @@ LowPassFilter motor_angle_low_pass_filter(
   1000.0f / SENSOR_SAMPLING_TIME_MS
 );
 
-PID pid_outer(-1.920872f, -0.5f, -3.117162f, 394, MIN_ANGLE, MAX_ANGLE);
+PID pid_outer(-1.920872f, -0.2f, -3.117162f, 394, MIN_ANGLE, MAX_ANGLE);
 PID pid_inner(-7.892344f, -0.998973, -0.177016f, 15, MIN_VOLTAGE, MAX_VOLTAGE);
 
 // ================== Function Declarations ==================
